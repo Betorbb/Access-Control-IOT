@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "author": "Roberto",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-esp32-devkit-v1", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    {
+      "type": "wokwi-led",
+      "id": "led_green",
+      "top": 102,
+      "left": -149.8,
+      "rotate": 270,
+      "attrs": { "color": "green" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_red",
+      "top": 130.8,
+      "left": -149.8,
+      "rotate": 270,
+      "attrs": { "color": "red" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 100.25,
+      "left": -107,
+      "rotate": 180,
+      "attrs": { "resistance": "220", "value": "220" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r2",
+      "top": 129.05,
+      "left": -107,
+      "rotate": 180,
+      "attrs": { "resistance": "220", "value": "220" }
+    },
+    { "type": "wokwi-buzzer", "id": "buzzer", "top": -112.8, "left": 11.4, "attrs": {} },
+    { "type": "wokwi-dht22", "id": "dht", "top": 60, "left": 230, "attrs": {} },
+    { "type": "wokwi-relay-module", "id": "relay", "top": 259.4, "left": 38.4, "attrs": {} },
+    {
+      "type": "wokwi-pir-motion-sensor",
+      "id": "pir1",
+      "top": 193.72,
+      "left": -239.5,
+      "rotate": 270,
+      "attrs": {}
+    },
+    {
+      "type": "board-mfrc522",
+      "id": "rfid1",
+      "top": 318.84,
+      "left": -175.75,
+      "rotate": 90,
+      "attrs": {}
+    }
+  ],
+  "connections": [
+    [ "r1:2", "led_green:A", "green", [ "v0" ] ],
+    [ "r1:1", "esp:D32", "green", [ "v-28.8", "v-4.6" ] ],
+    [ "led_green:C", "esp:GND.2", "black", [ "v12", "h16.8", "v5" ] ],
+    [ "r2:2", "led_red:A", "red", [ "v0" ] ],
+    [ "r2:1", "esp:D33", "red", [ "h19.2", "h9.6", "v-52.7" ] ],
+    [ "led_red:C", "esp:GND.2", "black", [ "v0" ] ],
+    [ "buzzer:1", "esp:GND.3", "black", [ "v20", "h60" ] ],
+    [ "buzzer:2", "esp:D25", "orange", [ "h28.4", "v120.1" ] ],
+    [ "relay:IN", "esp:D26", "purple", [ "h-75", "v-185" ] ],
+    [ "relay:GND", "esp:GND.2", "black", [ "h-48", "v-120.2" ] ],
+    [ "relay:VCC", "esp:VIN", "red", [ "h-38.4", "v-100.7" ] ],
+    [ "dht:SDA", "esp:D15", "blue", [ "v26.7", "h-120.1", "v-62.1" ] ],
+    [ "dht:GND", "esp:GND.1", "black", [ "v15.5", "h-149", "v-41.4" ] ],
+    [ "dht:VCC", "esp:3V3", "red", [ "v-10", "h-120" ] ],
+    [ "pir1:OUT", "esp:D13", "gold", [ "h109.6", "v0.7", "v-100.5" ] ],
+    [ "pir1:GND", "esp:GND.1", "black", [ "v-0.26", "h272.8", "v-80.32" ] ],
+    [ "pir1:VCC", "esp:3V3", "red", [ "h52", "v-37.84", "h211.2", "v-52.7" ] ],
+    [ "rfid1:SDA", "esp:D5", "blue", [ "v-48", "h172.8", "v-153.6", "h-42.7" ] ],
+    [ "rfid1:SCK", "esp:D18", "gold", [ "v-38.4", "h290", "v-160" ] ],
+    [ "rfid1:MOSI", "esp:D23", "green", [ "v-28.8", "h300", "v-180" ] ],
+    [ "rfid1:MISO", "esp:D19", "#8f4814", [ "v-38.4", "h270", "v-165" ] ],
+    [ "rfid1:RST", "esp:D27", "red", [ "v-48", "h40", "v-129.2" ] ],
+    [ "rfid1:GND", "esp:GND.2", "black", [ "v-139" ] ],
+    [ "rfid1:3.3V", "esp:3V3", "red", [ "v-76.8", "h211.2", "v-52.7" ] ],
+    [ "buzzer:1", "esp:GND.2", "black", [ "h-48", "v177.8" ] ]
+  ],
+  "dependencies": {}
+}

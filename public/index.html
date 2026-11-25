@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controle de Acesso IoT - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-6">
+  <div class="max-w-6xl mx-auto space-y-6">
+    <header class="flex flex-wrap justify-between items-center bg-slate-800 p-5 rounded-xl border border-slate-700">
+      <div>
+        <h1 class="text-2xl font-bold text-emerald-400">Access Control IoT</h1>
+        <p class="text-sm text-slate-400">Dispositivo: <span class="font-mono text-white">ESP32-AC-001</span></p>
+      </div>
+      <span id="status-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+        Aguardando sinal...
+      </span>
+    </header>
+
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-slate-800 p-5 rounded-xl border border-slate-700">
+        <p class="text-sm text-slate-400">Temperatura (DHT22)</p>
+        <p id="temp-val" class="text-3xl font-bold mt-1 text-sky-400">-- °C</p>
+      </div>
+      <div class="bg-slate-800 p-5 rounded-xl border border-slate-700">
+        <p class="text-sm text-slate-400">Umidade Relativa</p>
+        <p id="hum-val" class="text-3xl font-bold mt-1 text-indigo-400">-- %</p>
+      </div>
+      <div class="bg-slate-800 p-5 rounded-xl border border-slate-700">
+        <p class="text-sm text-slate-400">Sinal Wi-Fi</p>
+        <p id="wifi-val" class="text-3xl font-bold mt-1 text-emerald-400">-- %</p>
+      </div>
+      <div class="bg-slate-800 p-5 rounded-xl border border-slate-700">
+        <p class="text-sm text-slate-400">Uptime ESP32</p>
+        <p id="uptime-val" class="text-3xl font-bold mt-1 text-amber-400">-- s</p>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 space-y-4">
+        <h2 class="text-lg font-semibold border-b border-slate-700 pb-2">Acionamento Remoto de Atuadores</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <button onclick="sendCommand('open_door')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-4 rounded-lg transition">
+            Abrir Porta
+          </button>
+          <button onclick="sendCommand('close_door')" class="bg-rose-600 hover:bg-rose-500 text-white font-semibold py-3 px-4 rounded-lg transition">
+            Fechar Porta
+          </button>
+          <button onclick="sendCommand('unlock', { duration: 5000 })" class="bg-sky-600 hover:bg-sky-500 text-white font-semibold py-3 px-4 rounded-lg transition">
+            Destravar (5s)
+          </button>
+        </div>
+        <p id="cmd-feedback" class="text-xs text-slate-400 h-4"></p>
+      </div>
+
+      <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 space-y-4">
+        <h2 class="text-lg font-semibold border-b border-slate-700 pb-2">Cadastrar Cartão RFID (MySQL)</h2>
+        <form id="card-form" class="flex flex-col sm:flex-row gap-3">
+          <input type="text" id="card-uid" placeholder="UID (ex: 01020304)" required
+                 class="bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm uppercase flex-1">
+          <input type="text" id="card-user" placeholder="Nome do Usuário" required
+                 class="bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm flex-1">
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2 rounded-lg text-sm">
+            Salvar
+          </button>
+        </form>
+        <div id="cards-list" class="text-xs text-slate-300 flex flex-wrap gap-2"></div>
+      </div>
+    </section>
+
+    <section class="bg-slate-800 p-5 rounded-xl border border-slate-700">
+      <h2 class="text-lg font-semibold mb-3">Log de Eventos e Acessos em Tempo Real</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="text-slate-400 border-b border-slate-700">
+            <tr>
+              <th class="py-2">Horário</th>
+              <th class="py-2">Tipo de Evento</th>
+              <th class="py-2">Detalhes</th>
+            </tr>
+          </thead>
+          <tbody id="events-table" class="divide-y divide-slate-700/60"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const socket = io();
+
+    function updateTelemetryUI(data) {
+      if (!data) return;
+      document.getElementById('temp-val').textContent = `${Number(data.temperature).toFixed(1)} °C`;
+      document.getElementById('hum-val').textContent = `${Number(data.humidity).toFixed(1)} %`;
+      document.getElementById('wifi-val').textContent = `${data.signal_strength ?? '--'} %`;
+      document.getElementById('uptime-val').textContent = `${data.uptime ?? '--'} s`;
+      setOnlineStatus();
+    }
+
+    function setOnlineStatus() {
+      const badge = document.getElementById('status-badge');
+      badge.textContent = 'ONLINE (MQTT/Web)';
+      badge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+    }
+
+    function prependEventRow(ev) {
+      const tbody = document.getElementById('events-table');
+      const tr = document.createElement('tr');
+      const time = ev.created_at ? new Date(ev.created_at).toLocaleTimeString('pt-BR') : new Date().toLocaleTimeString('pt-BR');
+      tr.innerHTML = `
+        <td class="py-2 font-mono text-xs text-slate-400">${time}</td>
+        <td class="py-2 font-semibold text-emerald-400">${ev.event_type}</td>
+        <td class="py-2 text-slate-200">${ev.details || '-'}</td>
+      `;
+      tbody.prepend(tr);
+      if (tbody.children.length > 20) tbody.removeChild(tbody.lastChild);
+    }
+
+    socket.on('telemetry_update', (data) => updateTelemetryUI(data));
+    socket.on('event_update', (data) => {
+      setOnlineStatus();
+      prependEventRow(data);
+    });
+    socket.on('status_update', () => setOnlineStatus());
+
+    async function loadInitialData() {
+      const res = await fetch('/api/dashboard');
+      const data = await res.json();
+      if (data.latestTelemetry) updateTelemetryUI(data.latestTelemetry);
+
+      const tbody = document.getElementById('events-table');
+      tbody.innerHTML = '';
+      (data.events || []).reverse().forEach(prependEventRow);
+
+      const cardsDiv = document.getElementById('cards-list');
+      cardsDiv.innerHTML = (data.cards || []).map(c =>
+        `<span class="bg-slate-700 px-2 py-1 rounded font-mono">${c.uid} - ${c.user_name}</span>`
+      ).join('');
+    }
+
+    async function sendCommand(command, payload = {}) {
+      const feedback = document.getElementById('cmd-feedback');
+      feedback.textContent = `Enviando comando "${command}"...`;
+      const res = await fetch('/api/commands', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command, payload })
+      });
+      feedback.textContent = res.ok
+        ? `Comando "${command}" enviado com sucesso ao ESP32!`
+        : 'Erro ao enviar comando.';
+    }
+
+    document.getElementById('card-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const uid = document.getElementById('card-uid').value;
+      const user_name = document.getElementById('card-user').value;
+      const res = await fetch('/api/cards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, user_name })
+      });
+      if (res.ok) {
+        document.getElementById('card-uid').value = '';
+        document.getElementById('card-user').value = '';
+        loadInitialData();
+      } else {
+        alert('Erro ao cadastrar cartão (verifique se o UID já existe).');
+      }
+    });
+
+    loadInitialData();
+  </script>
+</body>
+</html>
